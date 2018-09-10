@@ -11,7 +11,7 @@
 
   <groupId>com.squareup.moshi</groupId>
   <artifactId>moshi-parent</artifactId>
-  <version>1.7.0-SNAPSHOT</version>
+  <version>1.7.0-AVITOTEST</version>
   <packaging>pom</packaging>
   <name>Moshi (Parent)</name>
   <description>A modern JSON API for Android and Java</description>
@@ -27,6 +27,7 @@
   </modules>
 
   <properties>
+    <maven.deploy.skip>true</maven.deploy.skip>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <java.version>1.7</java.version>
     <kotlin.version>1.2.21</kotlin.version>
@@ -201,6 +202,33 @@
           <autoVersionSubmodules>true</autoVersionSubmodules>
         </configuration>
       </plugin>
+          <plugin>
+            <groupId>org.jfrog.buildinfo</groupId>
+            <artifactId>artifactory-maven-plugin</artifactId>
+            <version>2.6.1</version>
+            <inherited>false</inherited>
+            <executions>
+              <execution>
+                <id>build-info</id>
+                <goals>
+                  <goal>publish</goal>
+                </goals>
+                <configuration>
+                  <deployProperties>
+                    <gradle>awesome</gradle>
+                    <review.team>qa</review.team>
+                  </deployProperties>
+                  <publisher>
+                    <contextUrl>${artifactoryUrl}/</contextUrl>
+                    <username>${artifactoryUser}</username>
+                    <password>${artifactoryPassword}</password>
+                    <repoKey>libs-release-local</repoKey>
+                    <snapshotRepoKey>libs-snapshot-local</snapshotRepoKey>
+                  </publisher>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
     </plugins>
   </build>
 </project>
