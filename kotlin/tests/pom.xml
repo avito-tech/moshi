@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.squareup.moshi</groupId>
     <artifactId>moshi-parent</artifactId>
-    <version>1.7.0-SNAPSHOT</version>
+    <version>1.7.0-AVITOTEST</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -40,6 +40,7 @@
   </dependencies>
 
   <properties>
+    <maven.deploy.skip>true</maven.deploy.skip>
     <maven.javadoc.skip>true</maven.javadoc.skip><!-- We use Dokka instead. -->
   </properties>
 
