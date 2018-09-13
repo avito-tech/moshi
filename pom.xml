@@ -11,7 +11,7 @@
 
   <groupId>com.squareup.moshi</groupId>
   <artifactId>moshi-parent</artifactId>
-  <version>1.7.0-AVITOTEST</version>
+  <version>1.7.0-avito02</version>
   <packaging>pom</packaging>
   <name>Moshi (Parent)</name>
   <description>A modern JSON API for Android and Java</description>
@@ -164,6 +164,16 @@
           <artifactId>kotlin-maven-plugin</artifactId>
           <version>${kotlin.version}</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>3.0.1</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>3.0.1</version>
+        </plugin>
       </plugins>
     </pluginManagement>
 
@@ -202,6 +212,26 @@
           <autoVersionSubmodules>true</autoVersionSubmodules>
         </configuration>
       </plugin>
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>deploy</phase>
+            <goals><goal>jar-no-fork</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <phase>deploy</phase>
+            <goals><goal>jar</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
           <plugin>
             <groupId>org.jfrog.buildinfo</groupId>
             <artifactId>artifactory-maven-plugin</artifactId>
@@ -219,7 +249,7 @@
                     <review.team>qa</review.team>
                   </deployProperties>
                   <publisher>
-                    <contextUrl>${artifactoryUrl}/</contextUrl>
+                    <contextUrl>${artifactoryUrl}</contextUrl>
                     <username>${artifactoryUser}</username>
                     <password>${artifactoryPassword}</password>
                     <repoKey>libs-release-local</repoKey>
