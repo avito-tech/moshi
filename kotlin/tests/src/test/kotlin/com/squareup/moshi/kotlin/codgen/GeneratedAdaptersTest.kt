@@ -869,7 +869,8 @@ class GeneratedAdaptersTest {
     val encoded = MultiplePropertiesShareAdapter("Android", "Banana")
     assertThat(jsonAdapter.toJson(encoded)).isEqualTo("""{"a":"ANDROID","b":"BANANA"}""")
 
-    val delegateAdapters = jsonAdapter::class.memberProperties.filter {
+    val delegateAdapters = GeneratedAdaptersTest_MultiplePropertiesShareAdapterJsonAdapter::class
+        .memberProperties.filter {
       it.returnType.classifier == JsonAdapter::class
     }
     assertThat(delegateAdapters).hasSize(1)
@@ -1074,6 +1075,13 @@ class GeneratedAdaptersTest {
     assertThat(adapter.fromJson("""{"boolean":"not a boolean"}"""))
         .isEqualTo(HasNullableBoolean(null))
     assertThat(adapter.toJson(HasNullableBoolean(null))).isEqualTo("""{"boolean":null}""")
+  }
+
+  @Test fun adaptersAreNullSafe() {
+    val moshi = Moshi.Builder().build()
+    val adapter = moshi.adapter(HasNonNullConstructorParameter::class.java)
+    assertThat(adapter.fromJson("null")).isNull()
+    assertThat(adapter.toJson(null)).isEqualTo("null")
   }
 }
 

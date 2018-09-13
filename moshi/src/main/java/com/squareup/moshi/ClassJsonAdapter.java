@@ -95,14 +95,15 @@ final class ClassJsonAdapter<T> extends JsonAdapter<T> {
         // Look up a type adapter for this type.
         Type fieldType = resolve(type, rawType, field.getGenericType());
         Set<? extends Annotation> annotations = Util.jsonAnnotations(field);
-        JsonAdapter<Object> adapter = moshi.adapter(fieldType, annotations);
+        String fieldName = field.getName();
+        JsonAdapter<Object> adapter = moshi.adapter(fieldType, annotations, fieldName);
 
         // Create the binding between field and JSON.
         field.setAccessible(true);
 
         // Store it using the field's name. If there was already a field with this name, fail!
         Json jsonAnnotation = field.getAnnotation(Json.class);
-        String name = jsonAnnotation != null ? jsonAnnotation.name() : field.getName();
+        String name = jsonAnnotation != null ? jsonAnnotation.name() : fieldName;
         FieldBinding<Object> fieldBinding = new FieldBinding<>(name, field, adapter);
         FieldBinding<?> replaced = fieldBindings.put(name, fieldBinding);
         if (replaced != null) {
@@ -138,10 +139,7 @@ final class ClassJsonAdapter<T> extends JsonAdapter<T> {
     } catch (InstantiationException e) {
       throw new RuntimeException(e);
     } catch (InvocationTargetException e) {
-      Throwable targetException = e.getTargetException();
-      if (targetException instanceof RuntimeException) throw (RuntimeException) targetException;
-      if (targetException instanceof Error) throw (Error) targetException;
-      throw new RuntimeException(targetException);
+      throw Util.rethrowCause(e);
     } catch (IllegalAccessException e) {
       throw new AssertionError();
     }
