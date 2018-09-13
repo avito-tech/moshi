@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.squareup.moshi</groupId>
     <artifactId>moshi-parent</artifactId>
-    <version>1.7.0-AVITOTEST</version>
+    <version>1.7.0-avito02</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
