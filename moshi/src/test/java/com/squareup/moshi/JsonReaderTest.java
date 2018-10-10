@@ -33,6 +33,7 @@ import static com.squareup.moshi.JsonReader.Token.STRING;
 import static com.squareup.moshi.TestUtil.repeat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
@@ -984,5 +985,165 @@ public final class JsonReaderTest {
     JsonReader reader = newReader("1");
     reader.readJsonValue();
     assertThat(reader.hasNext()).isFalse();
+  }
+
+  @Test public void basicPeekJson() throws IOException {
+    JsonReader reader = newReader("{\"a\":12,\"b\":[34,56],\"c\":78}");
+    reader.beginObject();
+    assertThat(reader.nextName()).isEqualTo("a");
+    assertThat(reader.nextInt()).isEqualTo(12);
+    assertThat(reader.nextName()).isEqualTo("b");
+    reader.beginArray();
+    assertThat(reader.nextInt()).isEqualTo(34);
+
+    // Peek.
+    JsonReader peekReader = reader.peekJson();
+    assertThat(peekReader.nextInt()).isEqualTo(56);
+    peekReader.endArray();
+    assertThat(peekReader.nextName()).isEqualTo("c");
+    assertThat(peekReader.nextInt()).isEqualTo(78);
+    peekReader.endObject();
+    assertThat(peekReader.peek()).isEqualTo(JsonReader.Token.END_DOCUMENT);
+
+    // Read again.
+    assertThat(reader.nextInt()).isEqualTo(56);
+    reader.endArray();
+    assertThat(reader.nextName()).isEqualTo("c");
+    assertThat(reader.nextInt()).isEqualTo(78);
+    reader.endObject();
+    assertThat(reader.peek()).isEqualTo(JsonReader.Token.END_DOCUMENT);
+  }
+
+  /**
+   * We have a document that requires 12 operations to read. We read it step-by-step with one real
+   * reader. Before each of the real reader’s operations we create a peeking reader and let it read
+   * the rest of the document.
+   */
+  @Test public void peekJsonReader() throws IOException {
+    JsonReader reader = newReader("[12,34,{\"a\":56,\"b\":78},90]");
+    for (int i = 0; i < 12; i++) {
+      readPeek12Steps(reader.peekJson(), i, 12);
+      readPeek12Steps(reader, i, i + 1);
+    }
+  }
+
+  /**
+   * Read a fragment of {@code reader}. This assumes the fixed document defined in {@link
+   * #peekJsonReader} and reads a range of it on each call.
+   */
+  private void readPeek12Steps(JsonReader reader, int from, int until) throws IOException {
+    switch (from) {
+      case 0:
+        if (until == 0) break;
+        reader.beginArray();
+        assertThat(reader.getPath()).isEqualTo("$[0]");
+      case 1:
+        if (until == 1) break;
+        assertThat(reader.nextInt()).isEqualTo(12);
+        assertThat(reader.getPath()).isEqualTo("$[1]");
+      case 2:
+        if (until == 2) break;
+        assertThat(reader.nextInt()).isEqualTo(34);
+        assertThat(reader.getPath()).isEqualTo("$[2]");
+      case 3:
+        if (until == 3) break;
+        reader.beginObject();
+        assertThat(reader.getPath()).isEqualTo("$[2].");
+      case 4:
+        if (until == 4) break;
+        assertThat(reader.nextName()).isEqualTo("a");
+        assertThat(reader.getPath()).isEqualTo("$[2].a");
+      case 5:
+        if (until == 5) break;
+        assertThat(reader.nextInt()).isEqualTo(56);
+        assertThat(reader.getPath()).isEqualTo("$[2].a");
+      case 6:
+        if (until == 6) break;
+        assertThat(reader.nextName()).isEqualTo("b");
+        assertThat(reader.getPath()).isEqualTo("$[2].b");
+      case 7:
+        if (until == 7) break;
+        assertThat(reader.nextInt()).isEqualTo(78);
+        assertThat(reader.getPath()).isEqualTo("$[2].b");
+      case 8:
+        if (until == 8) break;
+        reader.endObject();
+        assertThat(reader.getPath()).isEqualTo("$[3]");
+      case 9:
+        if (until == 9) break;
+        assertThat(reader.nextInt()).isEqualTo(90);
+        assertThat(reader.getPath()).isEqualTo("$[4]");
+      case 10:
+        if (until == 10) break;
+        reader.endArray();
+        assertThat(reader.getPath()).isEqualTo("$");
+      case 11:
+        if (until == 11) break;
+        assertThat(reader.peek()).isEqualTo(JsonReader.Token.END_DOCUMENT);
+        assertThat(reader.getPath()).isEqualTo("$");
+    }
+  }
+
+  /** Confirm that we can peek in every state of the UTF-8 reader. */
+  @Test public void peekAfterPeek() throws IOException {
+    JsonReader reader = newReader(
+        "[{\"a\":\"aaa\",'b':'bbb',c:c,\"d\":\"d\"},true,false,null,1,2.0]");
+    reader.setLenient(true);
+    readValue(reader, true);
+    reader.peekJson();
+  }
+
+  @Test public void peekAfterPromoteNameToValue() throws IOException {
+    JsonReader reader = newReader("{\"a\":\"b\"}");
+    reader.beginObject();
+    reader.promoteNameToValue();
+    assertEquals("a", reader.peekJson().nextString());
+    assertEquals("a", reader.nextString());
+    assertEquals("b", reader.peekJson().nextString());
+    assertEquals("b", reader.nextString());
+    reader.endObject();
+  }
+
+  /** Peek a value, then read it, recursively. */
+  private void readValue(JsonReader reader, boolean peekJsonFirst) throws IOException {
+    JsonReader.Token token = reader.peek();
+    if (peekJsonFirst) {
+      readValue(reader.peekJson(), false);
+    }
+
+    switch (token) {
+      case BEGIN_ARRAY:
+        reader.beginArray();
+        while (reader.hasNext()) {
+          readValue(reader, peekJsonFirst);
+        }
+        reader.peekJson().endArray();
+        reader.endArray();
+        break;
+      case BEGIN_OBJECT:
+        reader.beginObject();
+        while (reader.hasNext()) {
+          assertNotNull(reader.peekJson().nextName());
+          assertNotNull(reader.nextName());
+          readValue(reader, peekJsonFirst);
+        }
+        reader.peekJson().endObject();
+        reader.endObject();
+        break;
+      case STRING:
+        reader.nextString();
+        break;
+      case NUMBER:
+        reader.nextDouble();
+        break;
+      case BOOLEAN:
+        reader.nextBoolean();
+        break;
+      case NULL:
+        reader.nextNull();
+        break;
+      default:
+        throw new AssertionError();
+    }
   }
 }

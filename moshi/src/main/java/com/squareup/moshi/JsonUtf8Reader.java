@@ -31,6 +31,7 @@ final class JsonUtf8Reader extends JsonReader {
   private static final ByteString UNQUOTED_STRING_TERMINALS
       = ByteString.encodeUtf8("{}[]:, \n\t\r\f/\\;#=");
   private static final ByteString LINEFEED_OR_CARRIAGE_RETURN = ByteString.encodeUtf8("\n\r");
+  private static final ByteString CLOSING_BLOCK_COMMENT = ByteString.encodeUtf8("*/");
 
   private static final int PEEKED_NONE = 0;
   private static final int PEEKED_BEGIN_OBJECT = 1;
@@ -95,6 +96,27 @@ final class JsonUtf8Reader extends JsonReader {
     this.source = source;
     this.buffer = source.buffer();
     pushScope(JsonScope.EMPTY_DOCUMENT);
+  }
+
+  /** Copy-constructor makes a deep copy for peeking. */
+  JsonUtf8Reader(JsonUtf8Reader copyFrom) {
+    super(copyFrom);
+
+    BufferedSource sourcePeek = copyFrom.source.peek();
+    this.source = sourcePeek;
+    this.buffer = sourcePeek.getBuffer();
+    this.peeked = copyFrom.peeked;
+    this.peekedLong = copyFrom.peekedLong;
+    this.peekedNumberLength = copyFrom.peekedNumberLength;
+    this.peekedString = copyFrom.peekedString;
+
+    // Make sure our buffer has as many bytes as the source's buffer. This is necessary because
+    // JsonUtf8Reader assumes any data it has peeked (like the peekedNumberLength) are buffered.
+    try {
+      sourcePeek.require(copyFrom.buffer.size());
+    } catch (IOException e) {
+      throw new AssertionError();
+    }
   }
 
   @Override public void beginArray() throws IOException {
@@ -990,11 +1012,9 @@ final class JsonUtf8Reader extends JsonReader {
             // skip a /* c-style comment */
             buffer.readByte(); // '/'
             buffer.readByte(); // '*'
-            if (!skipTo("*/")) {
+            if (!skipToEndOfBlockComment()) {
               throw syntaxError("Unterminated comment");
             }
-            buffer.readByte(); // '*'
-            buffer.readByte(); // '/'
             p = 0;
             continue;
 
@@ -1043,20 +1063,17 @@ final class JsonUtf8Reader extends JsonReader {
   }
 
   /**
-   * @param toFind a string to search for. Must not contain a newline.
+   * Skips through the next closing block comment.
    */
-  private boolean skipTo(String toFind) throws IOException {
-    outer:
-    for (; source.request(toFind.length()); ) {
-      for (int c = 0; c < toFind.length(); c++) {
-        if (buffer.getByte(c) != toFind.charAt(c)) {
-          buffer.readByte();
-          continue outer;
-        }
-      }
-      return true;
-    }
-    return false;
+  private boolean skipToEndOfBlockComment() throws IOException {
+    long index = source.indexOf(CLOSING_BLOCK_COMMENT);
+    boolean found = index != -1;
+    buffer.skip(found ? index + CLOSING_BLOCK_COMMENT.size() : buffer.size());
+    return found;
+  }
+
+  @Override public JsonReader peekJson() {
+    return new JsonUtf8Reader(this);
   }
 
   @Override public String toString() {

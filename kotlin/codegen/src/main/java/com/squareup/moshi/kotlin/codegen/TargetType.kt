@@ -53,8 +53,7 @@ internal data class TargetType(
   val element: TypeElement,
   val constructor: TargetConstructor,
   val properties: Map<String, TargetProperty>,
-  val typeVariables: List<TypeVariableName>,
-  val companionObjectName: String?
+  val typeVariables: List<TypeVariableName>
 ) {
   val name = element.className
 
@@ -74,7 +73,7 @@ internal data class TargetType(
       when {
         proto.classKind == Class.Kind.ENUM_CLASS -> {
           messager.printMessage(
-              ERROR, "@JsonClass can't be applied to $element: must not be an enum class", element)
+              ERROR, "@JsonClass with 'generateAdapter = \"true\"' can't be applied to $element: code gen for enums is not supported or necessary", element)
           return null
         }
         proto.classKind != Class.Kind.CLASS -> {
@@ -129,12 +128,7 @@ internal data class TargetType(
           properties.putIfAbsent(name, property)
         }
       }
-      val companionObjectName = if (proto.hasCompanionObjectName()) {
-        typeMetadata.data.nameResolver.getQualifiedClassName(proto.companionObjectName)
-      } else {
-        null
-      }
-      return TargetType(proto, element, constructor, properties, typeVariables, companionObjectName)
+      return TargetType(proto, element, constructor, properties, typeVariables)
     }
 
     /** Returns the properties declared by `typeElement`. */
