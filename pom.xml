@@ -11,7 +11,7 @@
 
   <groupId>com.squareup.moshi</groupId>
   <artifactId>moshi-parent</artifactId>
-  <version>1.8.0-avito01</version>
+  <version>1.8.0-avito02</version>
   <packaging>pom</packaging>
   <name>Moshi (Parent)</name>
   <description>A modern JSON API for Android and Java</description>
